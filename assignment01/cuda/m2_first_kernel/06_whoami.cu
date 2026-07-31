@@ -5,7 +5,7 @@
 __global__ void whoami() {
     // 让每个 block 的 0 号线程报到。
     if (threadIdx.x == 0) {
-        printf("block %d 报到\n", blockIdx.x);
+        printf("block %d report\n", blockIdx.x);
     }
 }
 

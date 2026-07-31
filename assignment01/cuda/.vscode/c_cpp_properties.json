@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "name": "CUDA-WSL",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/mnt/d/CUDAToolkit13.3/include",
+                "/mnt/d/vsStudio/community/VC/Tools/MSVC/14.51.36231/include",
+                "/mnt/d/vsStudio/community/VC/Tools/MSVC/14.51.36231/atlmfc/include"
+            ],
+            "defines": [
+                "__CUDACC__",
+                "__CUDA_ARCH__=890"
+            ],
+            "compilerPath": "/mnt/d/CUDAToolkit13.3/bin/nvcc.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}

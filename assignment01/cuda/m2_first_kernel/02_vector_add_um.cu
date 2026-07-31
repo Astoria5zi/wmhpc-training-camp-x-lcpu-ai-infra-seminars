@@ -25,20 +25,26 @@ int main() {
     // 放进计时窗口会把要观察的差距完全淹掉。
     CUDA_CHECK(cudaFree(0));
 
-    float *h_a = (float *)malloc(bytes);
-    float *h_b = (float *)malloc(bytes);
-    float *h_c = (float *)malloc(bytes);
-    fill_random(h_a, n, 1);
-    fill_random(h_b, n, 2);
+    // float *h_a = (float *)malloc(bytes);
+    // float *h_b = (float *)malloc(bytes);
+    // float *h_c = (float *)malloc(bytes);
+    // fill_random(h_a, n, 1);
+    // fill_random(h_b, n, 2);
 
     // 期望的校验和，host 上先算好，同样不计入计时。
     double want = 0;
-    for (int i = 0; i < n; i++) want += (double)(h_a[i] + h_b[i]);
+    // for (int i = 0; i < n; i++) want += (double)(h_a[i] + h_b[i]);
 
     float *d_a, *d_b, *d_c;
-    CUDA_CHECK(cudaMalloc(&d_a, bytes));
-    CUDA_CHECK(cudaMalloc(&d_b, bytes));
-    CUDA_CHECK(cudaMalloc(&d_c, bytes));
+    // CUDA_CHECK(cudaMalloc(&d_a, bytes));
+    // CUDA_CHECK(cudaMalloc(&d_b, bytes));
+    // CUDA_CHECK(cudaMalloc(&d_c, bytes));
+    CUDA_CHECK(cudaMallocManaged(&d_a, bytes));
+    CUDA_CHECK(cudaMallocManaged(&d_b, bytes));
+    CUDA_CHECK(cudaMallocManaged(&d_c, bytes));
+    fill_random(d_a, n , 1);
+    fill_random(d_b, n , 2);
+     for (int i = 0; i < n; i++) want += (double)(d_a[i] + d_b[i]);
 
     int threads = 256;
     int blocks = (n + threads - 1) / threads;
@@ -46,17 +52,18 @@ int main() {
     // ================= 计时窗口开始 =================
     auto t0 = std::chrono::steady_clock::now();
 
-    CUDA_CHECK(cudaMemcpy(d_a, h_a, bytes, cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_b, h_b, bytes, cudaMemcpyHostToDevice));
+    // CUDA_CHECK(cudaMemcpy(d_a, h_a, bytes, cudaMemcpyHostToDevice));
+    // CUDA_CHECK(cudaMemcpy(d_b, h_b, bytes, cudaMemcpyHostToDevice));
 
     vectorAdd<<<blocks, threads>>>(d_a, d_b, d_c, n);
     CUDA_CHECK_KERNEL();
 
-    CUDA_CHECK(cudaMemcpy(h_c, d_c, bytes, cudaMemcpyDeviceToHost));
+    // CUDA_CHECK(cudaMemcpy(h_c, d_c, bytes, cudaMemcpyDeviceToHost));
 
     // CPU 读完全部结果。unified memory 版里，这一步才会把结果页搬回 host。
     double got = 0;
-    for (int i = 0; i < n; i++) got += (double)h_c[i];
+    cudaDeviceSynchronize();
+    for (int i = 0; i < n; i++) got += (double)d_c[i];
 
     auto t1 = std::chrono::steady_clock::now();
     // ================= 计时窗口结束 =================
