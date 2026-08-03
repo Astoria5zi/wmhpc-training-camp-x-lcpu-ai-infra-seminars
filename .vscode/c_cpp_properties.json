@@ -3,9 +3,7 @@
         {
             "name": "Win64",
             "includePath": [
-                "${workspaceFolder}/**",
-                "D:/vsStudio/community/VC/Tools/MSVC/14.51.36231/include",
-                "D:/CUDAToolkit13.3/include"
+                "${workspaceFolder}/**"
             ],
             "compilerPath": "D:/vsStudio/community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe",
             "cStandard": "c17",

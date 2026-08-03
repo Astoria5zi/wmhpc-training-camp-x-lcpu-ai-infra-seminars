@@ -40,10 +40,45 @@
 
 __global__ void reduce_interleaved(const float *in, float *out) {
     // TODO：从这里开始写（交错配对版本）
+    __shared__ float buf[BLOCK];
+    int t = threadIdx.x;
+    int base = blockIdx.x * blockDim.x;
+
+    buf[t] = in[t + base];
+    __syncthreads();
+
+    for(int s = 1; s < blockDim.x; s = s * 2){
+        if(t % (2 * s) == 0){
+            buf[t] = buf[t] + buf[t + s];
+        }
+        __syncthreads();
+    }
+
+    if(t == 0){
+        out[blockIdx.x] = buf[0];
+    }
+
 }
 
 __global__ void reduce_contiguous(const float *in, float *out) {
     // TODO：从这里开始写（连续配对版本）
+    __shared__ float buf[BLOCK];
+    int t = threadIdx.x;
+    int base = blockIdx.x * blockDim.x;
+
+    buf[t] = in[t + base];
+    __syncthreads();
+
+    for(int s = blockDim.x / 2; s > 0; s = s / 2){
+        if(t < s){
+            buf[t] = buf[t] + buf[t + s];
+        }
+        __syncthreads();
+    }
+
+    if(t == 0){
+        out[blockIdx.x] = buf[0];
+    }
 }
 
 // ---------------- 以下是判测与计时，不要修改 ----------------
