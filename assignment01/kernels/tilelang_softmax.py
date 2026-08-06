@@ -23,6 +23,51 @@ import torch
 import tilelang
 import tilelang.language as T
 
+_cache = {}
 
 def softmax(x: torch.Tensor) -> torch.Tensor:
-    raise NotImplementedError("从这里开始写")
+    # M, N = x.shape
+    # kernel = tilelang.compile(make_softmax(M,N), out_idx=[1])
+    M, N = x.shape
+    key = (M, N)                         # 形状作 key
+    if key not in _cache:
+      _cache[key] = tilelang.compile(make_softmax(M, N), out_idx=[1])
+    kernel = _cache[key]
+
+    return kernel(x)
+
+
+def make_softmax(M, N, dtype="float32"):
+    # softmax(row) = exp(row - max(row)) / sum(exp(row - max(row)))
+    BLOCK_N = (1 << (N-1).bit_length())
+    @T.prim_func
+    def softmax(
+        X: T.Buffer((M, N), dtype),
+        Y: T.Buffer((M, N), dtype)
+    ):
+        
+        with T.Kernel(M, threads=128) as (bx,):     # 每 block 处理第 bx 行（M 个 block）
+          x_row = T.alloc_fragment((BLOCK_N,), dtype)   # 一行，宽度 BLOCK_N
+
+          for j in T.Parallel(BLOCK_N):
+            x_row[j] = T.if_then_else(j < N, X[bx, j], -T.infinity(dtype))
+
+          # 算行最大值max
+          row_max = T.alloc_fragment((1,), dtype)   
+          T.reduce_max(x_row, row_max, dim=0)    
+          # 算exp(row - max)
+          exp_vals = T.alloc_fragment((BLOCK_N,), dtype)
+
+          for j in T.Parallel(BLOCK_N):
+            exp_vals[j] = T.exp(x_row[j] - row_max[0])
+
+          # 算exp和
+          exp_sum = T.alloc_fragment((1,),dtype)
+          T.reduce_sum(exp_vals, exp_sum,dim = 0)
+
+          for j in T.Parallel(BLOCK_N):
+            if j < N:
+               Y[bx,j] = exp_vals[j] / exp_sum[0]
+
+      
+    return softmax

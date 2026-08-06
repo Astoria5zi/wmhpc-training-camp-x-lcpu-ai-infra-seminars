@@ -38,7 +38,7 @@ __global__ void stencil_static(const float *in, float *out, int n) {
         int left = g - RADIUS;
         int right = g + BLOCK;
         tile[l - RADIUS] = (left >= 0) ? in[left] : 0.f;
-        tile[l + RADIUS] = (right < n) ? in[right] : 0.f;
+        tile[l + BLOCK] = (right < n) ? in[right] : 0.f;
     }
 
     // 同步屏障：必须等【所有】线程搬完（含 halo），才能开始读邻居
