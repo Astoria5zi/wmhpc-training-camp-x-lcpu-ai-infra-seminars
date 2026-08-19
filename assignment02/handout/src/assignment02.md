@@ -618,34 +618,44 @@ outlier 的 block 分别有什么变化？
 
 ### 5.2 {.prob type=DERIVE file=kernels/block_scale_sim.py}
 
-分析 block scaling 中 scale 的分组方向。scale 沿哪个方向分段，会直接
-决定它能否从累加和中整体提出。
+### 5.2 {.prob type=DERIVE file=kernels/block_scale_sim.py}
 
-补全文件中的两个模拟函数，使用 fp64 模拟量化后的部分和，并在每段结束
-时乘回对应的 scale：
+block scaling 的代数关键是沿着哪个方向分段 scale 乘积在
+K 归约中才能保持常数。补全两个 fp64 模拟函数:
+
+- `gemm_scale_per_row_col`:A 每行一个 scale，B 每个输出列一个
+  scale。scale 乘积在整个点积中不变，完整归约后只用乘回一次。
+- `gemm_scale_along_k`:A 和 B 的 scale 每 128 个 K 元素改变
+  一次。每个 K block 的 partial sum 要分别乘回该段的 scale 乘积，
+  然后进行累加。
+
+文件还提供了错误范例 `gemm_scale_along_k_one_restore`：它先把
+所有归一化 partial sum 相加，最后只乘回第一段的 scale。
+
+判测:
 
 ```
 cd assignment02
 uv run pytest tests/test_block_scale.py
 ```
 
-判测要求：沿 K 方向分段的版本需要与 fp64 GEMM 逐位一致；沿 M/N
-方向分段则无法满足这一条件。
+两个正确函数只要在 fp64 容差内与直接 GEMM 等价，不要要求
+bit-exact（因为分段会改变浮点加法的分组）。然后回答:
 
-完成后回答：
+(a) 用两行代数式分别写出 row/column scale 为什么可以在整个
+点积外乘回，而 K-block scale 为什么必须逐段乘回。
 
-(a) 用两行代数式说明原因。对于
+(b) [NVIDIA CUTLASS 的 Blackwell SM100 GEMM 说明](https://docs.nvidia.com/cutlass/latest/media/docs/cpp/blackwell_functionality.html)
+把 A 的
+scale 布局写成 $M \times \lceil K/SV \rceil$，B 写成
+$N \times \lceil K/SV \rceil$，每个 scale 负责连续的 16 或 32 个 K
+元素。结合 GEMM 内循环、连续供数和 Tensor Core 指令语义，说明硬件
+为什么把 block scale 与 K 归约对齐。
 
-$\sum_k (a_k/s_A)(b_k/s_B)$
-
-在什么条件下可以将 $s_A s_B$ 从累加和中整体提出？什么情况下不能？
-
-(b) 根据上述结果，解释 DeepSeek-V3 中 activation 1×128、weight
-128×128（S101）以及 NVFP4 1×16（S107）的量化分组为什么都沿 K 方向。
-
-(c) 5.1(c) 已经测过 1×128 的误差表现。结合 (a)，说明将量化粒度
-从 128 缩小到 16 后，精度上获得了什么，又增加了哪些 scale 开销。
-
+(c) DeepSeek-V3 的 weight 128×128 表示 scale 还在输出通道方向上
+共享，但每个组仍覆盖一段 K；NVFP4 则每 16 个 K 元素一组。
+结合 5.1(c) 的误差，说明粒度 16 相对粒度 128 有什么优势，又增加了
+多少 scale metadata 与供数复杂度。
 
 ### 5.3 {.prob type=FROM-SCRATCH file=cuda/m5_lowprec/}
 
