@@ -618,8 +618,6 @@ outlier 的 block 分别有什么变化？
 
 ### 5.2 {.prob type=DERIVE file=kernels/block_scale_sim.py}
 
-### 5.2 {.prob type=DERIVE file=kernels/block_scale_sim.py}
-
 block scaling 的代数关键是沿着哪个方向分段 scale 乘积在
 K 归约中才能保持常数。补全两个 fp64 模拟函数:
 
